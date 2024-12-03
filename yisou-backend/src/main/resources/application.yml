@@ -9,7 +9,6 @@ spring:
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher
-      suffix-pattern: true
   # session 配置
   session:
     # todo 取消注释开启分布式 session（须先配置 Redis）
