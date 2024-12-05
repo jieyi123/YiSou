@@ -6,9 +6,6 @@
           <template #title>
             {{ item.title }}
           </template>
-          <template #avatar>
-            <a-avatar :src="logo" />
-          </template>
         </a-list-item-meta>
       </a-list-item>
     </template>
@@ -24,7 +21,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  postList: () => [],
+  postList: () => []
 });
 </script>
 <style scoped></style>

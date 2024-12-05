@@ -1,13 +1,10 @@
 <template>
-  <a-list item-layout="horizontal" :data-source="props.postList">
+  <a-list item-layout="horizontal" :grid="{ gutter: 16, column: 4 }" :data-source="props.pictureList">
     <template #renderItem="{ item }">
       <a-card hoverable style="width: 240px">
         <template #cover>
-          <img alt="example" :src="logo" />
+          <img alt="example" :src="item.url" />
         </template>
-        <a-card-meta :title="item.title">
-          <template #description>{{ item.content }}</template>
-        </a-card-meta>
       </a-card>
     </template>
   </a-list>
@@ -18,11 +15,11 @@ import logo from "@/assets/logo.png";
 import { withDefaults, defineProps } from "vue";
 
 interface Props {
-  postList: any[];
+  pictureList: any[];
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  postList: () => [],
+  pictureList: () => []
 });
 </script>
 <style scoped></style>

@@ -1,7 +1,7 @@
 <template>
   <div class="indexPage">
     <a-input-search
-      v-model:value="searchParams.text"
+      v-model:value="searchParams.searchText"
       placeholder="input search text"
       enter-button="Search"
       size="large"
@@ -13,17 +13,17 @@
         <PostList :postList="postList" />
       </a-tab-pane>
       <a-tab-pane key="picture" tab="图片">
-        <PictureList :postList="postList" />
+        <PictureList :pictureList="pictureList" />
       </a-tab-pane>
       <a-tab-pane key="user" tab="用户">
-        <UserList />
+        <UserList :userList="userList" />
       </a-tab-pane>
     </a-tabs>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watchEffect } from "vue";
+import { onMounted, ref, watchEffect } from "vue";
 import PictureList from "@/components/PictureList.vue";
 import PostList from "@/components/PostList.vue";
 import UserList from "@/components/UserList.vue";
@@ -35,34 +35,52 @@ const router = useRouter();
 const route = useRoute();
 const activeKey = route.params.category;
 const postList = ref([]);
+const pictureList = ref([]);
+const userList = ref([]);
 const initSearchParams = {
-  text: "",
-  pageSize: 10,
-  pageNum: 1,
+  searchText: "",
+  pageSize: 8,
+  current: 1
 };
 
 const searchParams = ref(initSearchParams);
 
+onMounted(() => {
+  loadData();
+});
+
+const loadData = () => {
+  myAxios.post("/search/all", searchParams.value).then((res) => {
+    postList.value = res.postList;
+    pictureList.value = res.pictureList;
+    userList.value = res.userList;
+  });
+};
+
+
 watchEffect(() => {
   searchParams.value = {
     ...initSearchParams,
-    text: route.query.text,
+    searchText: route.query.searchText
   };
 });
 
+
 const onSearch = (value: string) => {
-  alert(value);
   router.push({
-    query: searchParams.value,
+    query: {
+      ...searchParams.value,
+      searchText: value
+    }
   });
+  loadData();
 };
 const onTableChange = (key: string) => {
   router.push({
     path: `/${key}`,
-    query: searchParams.value,
+    query: searchParams.value
   });
 };
-myAxios.post("/post/list/page/vo", {}).then((res) => {
-  postList.value = res.records;
-});
+
+
 </script>
