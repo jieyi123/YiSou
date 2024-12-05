@@ -2,10 +2,12 @@ package com.pjieyi.springbootinit.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pjieyi.springbootinit.constant.CommonConstant;
 import com.pjieyi.springbootinit.constant.UserConstant;
 import com.pjieyi.springbootinit.exception.BusinessException;
+import com.pjieyi.springbootinit.exception.ThrowUtils;
 import com.pjieyi.springbootinit.model.vo.LoginUserVO;
 import com.pjieyi.springbootinit.model.vo.UserVO;
 import com.pjieyi.springbootinit.service.UserService;
@@ -266,4 +268,25 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 sortField);
         return queryWrapper;
     }
+
+    /**
+     * 分页获取用户列表(非管理员)
+     * @param userQueryRequest
+     * @return
+     */
+    @Override
+    public Page<UserVO> listUserVOByPage(UserQueryRequest userQueryRequest) {
+        long current = userQueryRequest.getCurrent();
+        long size = userQueryRequest.getPageSize();
+        // 限制爬虫
+        ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR);
+        Page<User> userPage = this.page(new Page<>(current, size),
+                this.getQueryWrapper(userQueryRequest));
+        Page<UserVO> userVOPage = new Page<>(current, size, userPage.getTotal());
+        List<UserVO> userVO = this.getUserVO(userPage.getRecords());
+        userVOPage.setRecords(userVO);
+        return userVOPage;
+    }
+
+
 }
