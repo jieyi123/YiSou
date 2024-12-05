@@ -29,7 +29,7 @@ public class PictureServiceImpl implements PictureService {
         long current= (pageNum-1)*pageSize;
         String searchText = pictureQueryRequest.getSearchText();
         if (StringUtils.isEmpty(searchText)){
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "搜索内容不能为空");
+            searchText="默认图片";
         }
         String url = String.format("https://cn.bing.com/images/search?q=%s&first=%s",searchText,current);
         Document doc = null;
