@@ -1,7 +1,7 @@
 <template>
   <div class="indexPage">
     <a-input-search
-      v-model:value="searchParams.searchText"
+      v-model:value="searchText"
       placeholder="input search text"
       enter-button="Search"
       size="large"
@@ -44,16 +44,18 @@ const initSearchParams = {
 };
 
 const searchParams = ref(initSearchParams);
-
-onMounted(() => {
-  loadData();
-});
+const searchText = ref(route.query.searchText || "");
 
 const loadData = () => {
+  const type=route.params.category;
   myAxios.post("/search/all", searchParams.value).then((res) => {
-    postList.value = res.postList;
-    pictureList.value = res.pictureList;
-    userList.value = res.userList;
+    if (type === "post") {
+      postList.value = res.postList;
+    } else if (type === "user") {
+      userList.value = res.userList;
+    } else if (type === "picture") {
+      pictureList.value = res.pictureList;
+    }
   });
 };
 
@@ -61,8 +63,10 @@ const loadData = () => {
 watchEffect(() => {
   searchParams.value = {
     ...initSearchParams,
-    searchText: route.query.searchText
+    searchText: route.query.searchText,
+    type: route.params.category,
   };
+  loadData();
 });
 
 
@@ -73,7 +77,6 @@ const onSearch = (value: string) => {
       searchText: value
     }
   });
-  loadData();
 };
 const onTableChange = (key: string) => {
   router.push({

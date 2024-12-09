@@ -5,7 +5,7 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: "/",
     name: "home",
-    component: IndexPage,
+    redirect: '/post',
   },
   {
     path: "/:category",
