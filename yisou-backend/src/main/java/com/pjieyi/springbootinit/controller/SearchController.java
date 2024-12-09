@@ -5,6 +5,7 @@ import com.pjieyi.springbootinit.common.BaseResponse;
 import com.pjieyi.springbootinit.common.ErrorCode;
 import com.pjieyi.springbootinit.common.ResultUtils;
 import com.pjieyi.springbootinit.exception.ThrowUtils;
+import com.pjieyi.springbootinit.manager.SearchFacade;
 import com.pjieyi.springbootinit.model.dto.picture.PictureQueryRequest;
 import com.pjieyi.springbootinit.model.dto.post.PostQueryRequest;
 import com.pjieyi.springbootinit.model.dto.search.SearchQueryRequest;
@@ -36,12 +37,7 @@ import javax.servlet.http.HttpServletRequest;
 public class SearchController {
 
     @Resource
-    private PictureService pictureService;
-
-    @Resource
-    private UserService userService;
-    @Resource
-    private PostService postService;
+    private SearchFacade searchFacade;
 
     /**
      * 分页获取列表（封装类）
@@ -54,35 +50,7 @@ public class SearchController {
                                                    HttpServletRequest request) {
         // 限制爬虫
         ThrowUtils.throwIf(searchQueryRequest.getPageSize() > 20, ErrorCode.PARAMS_ERROR);
-        int pageSize = searchQueryRequest.getPageSize();
-        int current = searchQueryRequest.getCurrent();
-        String searchText = searchQueryRequest.getSearchText();
-
-        //封装获取用户列表
-        UserQueryRequest userQueryRequest=new UserQueryRequest();
-        userQueryRequest.setUserName(searchText);
-        userQueryRequest.setPageSize(pageSize);
-        userQueryRequest.setCurrent(current);
-        Page<UserVO> userVOPage = userService.listUserVOByPage(userQueryRequest);
-
-        //封装获取文章列表
-        PostQueryRequest postQueryRequest=new PostQueryRequest();
-        postQueryRequest.setSearchText(searchText);
-        postQueryRequest.setCurrent(current);
-        postQueryRequest.setPageSize(pageSize);
-        Page<PostVO> postVOPage = postService.listPostVOByPage(postQueryRequest, request);
-
-        //封装图片列表
-        PictureQueryRequest pictureQueryRequest=new PictureQueryRequest();
-        pictureQueryRequest.setSearchText(searchText);
-        pictureQueryRequest.setCurrent(current);
-        pictureQueryRequest.setPageSize(pageSize);
-        Page<Picture> picturePage = pictureService.getPicturePage(pictureQueryRequest, request);
-        SearchVO searchVO=new SearchVO();
-        searchVO.setPostList(postVOPage.getRecords());
-        searchVO.setUserList(userVOPage.getRecords());
-        searchVO.setPictureList(picturePage.getRecords());
-        return ResultUtils.success(searchVO);
+        return ResultUtils.success(searchFacade.searchAll(searchQueryRequest,request));
     }
 
 }
