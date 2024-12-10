@@ -18,4 +18,5 @@ public class SearchVO implements Serializable {
     private List<UserVO> userList;
     private List<PostVO> postList;
     private List<Picture> pictureList;
+    private List<?> dataList;
 }
