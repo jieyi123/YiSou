@@ -1,10 +1,7 @@
 package com.pjieyi.yisou.manager;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.pjieyi.yisou.datasource.DataSource;
-import com.pjieyi.yisou.datasource.PictureDataSource;
-import com.pjieyi.yisou.datasource.PostDataSource;
-import com.pjieyi.yisou.datasource.UserDataSource;
+import com.pjieyi.yisou.datasource.*;
 import com.pjieyi.yisou.model.dto.search.SearchQueryRequest;
 import com.pjieyi.yisou.model.entity.Picture;
 import com.pjieyi.yisou.model.enums.SearchTypeEnum;
@@ -14,8 +11,6 @@ import com.pjieyi.yisou.model.vo.UserVO;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
-import java.util.HashMap;
 
 /**
  * 搜索门面-根据不同的类型返回不同的结果
@@ -30,8 +25,10 @@ public class SearchFacade {
     @Resource
     private UserDataSource userDataSource;
 
-    public SearchVO searchAll(SearchQueryRequest searchQueryRequest,
-                              HttpServletRequest request){
+    @Resource
+    private DataSourceRegistry dataSourceRegistry;
+
+    public SearchVO searchAll(SearchQueryRequest searchQueryRequest){
         SearchVO searchVO=new SearchVO();
         String type= searchQueryRequest.getType();
         String searchText= searchQueryRequest.getSearchText();
@@ -50,14 +47,7 @@ public class SearchFacade {
             searchVO.setUserList(userVOPage.getRecords());
             searchVO.setPictureList(picturePage.getRecords());
         }else {
-            HashMap<String, DataSource<?>> map = new HashMap(){
-                {
-                    put(SearchTypeEnum.USER.getValue(),userDataSource);
-                    put(SearchTypeEnum.POST.getValue(),postDataSource);
-                    put(SearchTypeEnum.PICTURE.getValue(),pictureDataSource);
-                }
-            };
-            DataSource<?> dataSource = map.get(type);
+            DataSource<?> dataSource = dataSourceRegistry.getDataSourceByType(type);
             Page<?> page = dataSource.doSearch(searchText, current, pageSize);
             searchVO.setDataList(page.getRecords());
         }

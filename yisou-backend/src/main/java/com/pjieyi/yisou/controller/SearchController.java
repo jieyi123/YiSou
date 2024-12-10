@@ -40,7 +40,7 @@ public class SearchController {
                                                    HttpServletRequest request) {
         // 限制爬虫
         ThrowUtils.throwIf(searchQueryRequest.getPageSize() > 20, ErrorCode.PARAMS_ERROR);
-        return ResultUtils.success(searchFacade.searchAll(searchQueryRequest,request));
+        return ResultUtils.success(searchFacade.searchAll(searchQueryRequest));
     }
 
 }
