@@ -10,13 +10,13 @@
     <MyDivider />
     <a-tabs v-model:activeKey="activeKey" @change="onTableChange">
       <a-tab-pane key="post" tab="文章">
-        <PostList :postList="postList" />
+        <PostList :postList="dataList" />
       </a-tab-pane>
       <a-tab-pane key="picture" tab="图片">
-        <PictureList :pictureList="pictureList" />
+        <PictureList :pictureList="dataList" />
       </a-tab-pane>
       <a-tab-pane key="user" tab="用户">
-        <UserList :userList="userList" />
+        <UserList :userList="dataList" />
       </a-tab-pane>
     </a-tabs>
   </div>
@@ -34,7 +34,7 @@ import myAxios from "@/plugins/myAxios";
 const router = useRouter();
 const route = useRoute();
 const activeKey = route.params.category;
-const postList = ref([]);
+const dataList = ref([]);
 const pictureList = ref([]);
 const userList = ref([]);
 const initSearchParams = {
@@ -47,15 +47,9 @@ const searchParams = ref(initSearchParams);
 const searchText = ref(route.query.searchText || "");
 
 const loadData = () => {
-  const type=route.params.category;
+  const type = route.params.category;
   myAxios.post("/search/all", searchParams.value).then((res) => {
-    if (type === "post") {
-      postList.value = res.postList;
-    } else if (type === "user") {
-      userList.value = res.userList;
-    } else if (type === "picture") {
-      pictureList.value = res.pictureList;
-    }
+    dataList.value = res.dataList;
   });
 };
 
@@ -64,7 +58,7 @@ watchEffect(() => {
   searchParams.value = {
     ...initSearchParams,
     searchText: route.query.searchText,
-    type: route.params.category,
+    type: route.params.category
   };
   loadData();
 });
