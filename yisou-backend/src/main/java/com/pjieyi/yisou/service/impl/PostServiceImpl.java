@@ -35,6 +35,7 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.elasticsearch.index.query.BoolQueryBuilder;
 import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.sort.SortBuilder;
 import org.elasticsearch.search.sort.SortBuilders;
 import org.elasticsearch.search.sort.SortOrder;
@@ -172,7 +173,6 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         // 按关键词检索
         if (StringUtils.isNotBlank(searchText)) {
             boolQueryBuilder.should(QueryBuilders.matchQuery("title", searchText));
-            boolQueryBuilder.should(QueryBuilders.matchQuery("description", searchText));
             boolQueryBuilder.should(QueryBuilders.matchQuery("content", searchText));
             boolQueryBuilder.minimumShouldMatch(1);
         }
@@ -194,9 +194,17 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         }
         // 分页
         PageRequest pageRequest = PageRequest.of((int) current, (int) pageSize);
+        //高亮配置
+        HighlightBuilder highlightBuilder = new HighlightBuilder();
+        highlightBuilder.field("title");
+        highlightBuilder.field("content");
+        //多个字段高亮
+        highlightBuilder.requireFieldMatch(false);
+        highlightBuilder.preTags("<strong style=\"color:#DC362E\">");
+        highlightBuilder.postTags("</strong>");
         // 构造查询
         NativeSearchQuery searchQuery = new NativeSearchQueryBuilder().withQuery(boolQueryBuilder)
-                .withPageable(pageRequest).withSorts(sortBuilder).build();
+                .withPageable(pageRequest).withSorts(sortBuilder).withHighlightBuilder(highlightBuilder).build();
         SearchHits<PostEsDTO> searchHits = elasticsearchRestTemplate.search(searchQuery, PostEsDTO.class);
         Page<Post> page = new Page<>();
         page.setTotal(searchHits.getTotalHits());
@@ -204,8 +212,12 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
         // 查出结果后，从 db 获取最新动态数据（比如点赞数）
         if (searchHits.hasSearchHits()) {
             List<SearchHit<PostEsDTO>> searchHitList = searchHits.getSearchHits();
+            //搜索结果的全部id
             List<Long> postIdList = searchHitList.stream().map(searchHit -> searchHit.getContent().getId())
                     .collect(Collectors.toList());
+            //高亮显示的记录
+            Map<Long, Map<String, List<String>>> collectHighlightMap = searchHitList.stream()
+                    .collect(Collectors.toMap(searchHit -> searchHit.getContent().getId(), SearchHit::getHighlightFields));
             List<Post> postList = baseMapper.selectBatchIds(postIdList);
             if (postList != null) {
                 Map<Long, List<Post>> idPostMap = postList.stream().collect(Collectors.groupingBy(Post::getId));
@@ -219,6 +231,20 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements Po
                     }
                 });
             }
+            //高亮显示
+
+            resourceList.forEach(post -> {
+                Map<String, List<String>> stringListMap = collectHighlightMap.get(post.getId());
+                List<String> titleList = stringListMap.get("title");
+                List<String> contentList = stringListMap.get("content");
+                if (CollUtil.isNotEmpty(titleList)) {
+                    post.setTitle(titleList.get(0));
+                }
+                if (CollUtil.isNotEmpty(contentList)) {
+                    post.setContent(contentList.get(0));
+                }
+            });
+
         }
         page.setRecords(resourceList);
         return page;

@@ -2,6 +2,7 @@ package com.pjieyi.yisou.datasource;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pjieyi.yisou.model.dto.post.PostQueryRequest;
+import com.pjieyi.yisou.model.entity.Post;
 import com.pjieyi.yisou.model.vo.PostVO;
 import com.pjieyi.yisou.service.PostService;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ public class PostDataSource implements DataSource<PostVO> {
         postQueryRequest.setPageSize(pageSize);
         postQueryRequest.setCurrent(pageNum);
         HttpServletRequest request=((ServletRequestAttributes) (RequestContextHolder.currentRequestAttributes())).getRequest();
-        return postService.listPostVOByPage(postQueryRequest,request);
+        Page<Post> postPage = postService.searchFromEs(postQueryRequest);
+        return postService.getPostVOPage(postPage,request);
     }
 }
