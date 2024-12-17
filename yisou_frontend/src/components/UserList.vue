@@ -12,9 +12,10 @@
           <a key="list-loadmore-more">more</a>
         </template>
         <a-skeleton avatar :title="false" :loading="!!item.loading" active>
-          <a-list-item-meta
-            :description="item.userProfile"
-          >
+          <a-list-item-meta>
+            <template #description>
+              <div v-html="item.userProfile"></div>
+            </template>
             <template #title>
               <a href="https://www.antdv.com/">{{ item.userName }}</a>
             </template>

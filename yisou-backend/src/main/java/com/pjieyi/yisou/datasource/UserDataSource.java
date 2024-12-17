@@ -20,9 +20,9 @@ public class UserDataSource implements DataSource<UserVO> {
     @Override
     public Page<UserVO> doSearch(String searchText, int pageNum, int pageSize) {
         UserQueryRequest userQueryRequest = new UserQueryRequest();
-        userQueryRequest.setUserName(searchText);
+        userQueryRequest.setUserProfile(searchText);
         userQueryRequest.setPageSize(pageSize);
         userQueryRequest.setCurrent(pageNum);
-        return userService.listUserVOByPage(userQueryRequest);
+        return userService.searchFromEs(userQueryRequest);
     }
 }

@@ -8,6 +8,8 @@ import com.pjieyi.yisou.constant.CommonConstant;
 import com.pjieyi.yisou.constant.UserConstant;
 import com.pjieyi.yisou.exception.BusinessException;
 import com.pjieyi.yisou.exception.ThrowUtils;
+import com.pjieyi.yisou.model.dto.post.PostEsDTO;
+import com.pjieyi.yisou.model.dto.user.UserEsDTO;
 import com.pjieyi.yisou.model.vo.LoginUserVO;
 import com.pjieyi.yisou.model.vo.UserVO;
 import com.pjieyi.yisou.service.UserService;
@@ -19,12 +21,27 @@ import com.pjieyi.yisou.model.enums.UserRoleEnum;
 import com.pjieyi.yisou.utils.SqlUtils;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import me.chanjar.weixin.common.bean.WxOAuth2UserInfo;
 import org.apache.commons.lang3.StringUtils;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
+import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
+import org.elasticsearch.search.sort.SortBuilder;
+import org.elasticsearch.search.sort.SortBuilders;
+import org.elasticsearch.search.sort.SortOrder;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.elasticsearch.core.ElasticsearchRestTemplate;
+import org.springframework.data.elasticsearch.core.SearchHit;
+import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.data.elasticsearch.core.query.NativeSearchQuery;
+import org.springframework.data.elasticsearch.core.query.NativeSearchQueryBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
@@ -40,6 +57,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      * 盐值，混淆密码
      */
     public static final String SALT = "pjieyi";
+
+    @Resource
+    private ElasticsearchRestTemplate elasticsearchRestTemplate;
 
     @Override
     public long userRegister(String userAccount, String userPassword, String checkPassword) {
@@ -286,6 +306,77 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         List<UserVO> userVO = this.getUserVO(userPage.getRecords());
         userVOPage.setRecords(userVO);
         return userVOPage;
+    }
+
+    @Override
+    public Page<UserVO> searchFromEs(UserQueryRequest userQueryRequest) {
+        String userName = userQueryRequest.getUserName();
+        Long userId = userQueryRequest.getId();
+        String userProfile = userQueryRequest.getUserProfile();
+        String sortField = userQueryRequest.getSortField();
+        String sortOrder = userQueryRequest.getSortOrder();
+        // es 起始页为 0
+        long current = userQueryRequest.getCurrent() - 1;
+        long pageSize = userQueryRequest.getPageSize();
+        BoolQueryBuilder boolQueryBuilder= QueryBuilders.boolQuery();
+        if (StringUtils.isNotBlank(userName)) {
+            BoolQueryBuilder nameBoolQueryBuilder = QueryBuilders.boolQuery();
+            nameBoolQueryBuilder.should(QueryBuilders.matchQuery("userName", userName));
+            nameBoolQueryBuilder.should(QueryBuilders.wildcardQuery("userName", "*"+userName+"*"));
+           nameBoolQueryBuilder.minimumShouldMatch(1);
+            boolQueryBuilder.must(nameBoolQueryBuilder);
+        }
+        if (StringUtils.isNotBlank(userProfile)){
+            boolQueryBuilder.must(QueryBuilders.matchQuery("userProfile", userProfile));
+        }
+        if (userId != null){
+            boolQueryBuilder.must(QueryBuilders.termQuery("id", userId));
+        }
+        //排序
+        SortBuilder<?> sortBuilder = SortBuilders.scoreSort();
+        if (StringUtils.isNotBlank(sortField)){
+            sortBuilder = SortBuilders.fieldSort(sortField);
+            sortBuilder.order(CommonConstant.SORT_ORDER_ASC.equals(sortOrder) ? SortOrder.ASC : SortOrder.DESC);
+        }
+        //分页
+        PageRequest pageRequest = PageRequest.of((int) current, (int) pageSize);
+        //高亮配置
+        HighlightBuilder highlightBuilder = new HighlightBuilder();
+        highlightBuilder.field("userName");
+        highlightBuilder.field("userProfile");
+        //多个字段高亮
+        highlightBuilder.requireFieldMatch(false);
+        highlightBuilder.preTags("<strong style=\"color:#DC362E\">");
+        highlightBuilder.postTags("</strong>");
+        //构建查询
+        NativeSearchQuery searchQuery = new NativeSearchQueryBuilder().withQuery(boolQueryBuilder)
+                .withPageable(pageRequest).withSorts(sortBuilder).withHighlightBuilder(highlightBuilder).build();
+        SearchHits<UserEsDTO> searchHits = elasticsearchRestTemplate.search(searchQuery, UserEsDTO.class);
+        Page<UserVO> page = new Page<>();
+        page.setTotal(searchHits.getTotalHits());
+        if (searchHits.hasSearchHits()){
+            List<SearchHit<UserEsDTO>> searchHitList = searchHits.getSearchHits();
+            Map<Long, Map<String, List<String>>> collectHighlightMap = searchHitList.stream().
+                    collect(Collectors.toMap(searchHit -> searchHit.getContent().getId(), SearchHit::getHighlightFields));
+            Stream<UserEsDTO> userEsDTOStream = searchHitList.stream().map(SearchHit::getContent);
+            List<User> userList = searchHitList.stream().map(searchHit -> {
+                UserEsDTO content = searchHit.getContent();
+                return UserEsDTO.dtoToObj(content);
+            }).collect(Collectors.toList());
+            List<UserVO> userVOList = userList.stream().map(this::getUserVO).collect(Collectors.toList());
+            page.setRecords(userVOList);
+            //高亮处理
+            userVOList.forEach(
+                userVO -> {
+                    Map<String, List<String>> highlightFields = collectHighlightMap.get(userVO.getId());
+                    List<String> highlightUserProfile = highlightFields.get("userProfile");
+                    if (CollUtil.isNotEmpty(highlightUserProfile)){
+                        userVO.setUserProfile(highlightUserProfile.get(0));
+                    }
+                }
+            );
+        }
+        return page;
     }
 
 

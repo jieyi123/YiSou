@@ -306,4 +306,12 @@ public class UserController {
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
     }
+
+    @PostMapping("/search/page/vo")
+    public BaseResponse<Page<UserVO> > searchUserVO(@RequestBody UserQueryRequest userQueryRequest) {
+        int pageSize = userQueryRequest.getPageSize();
+        //限制爬虫
+        ThrowUtils.throwIf(pageSize>20, ErrorCode.PARAMS_ERROR);
+        return ResultUtils.success(userService.searchFromEs(userQueryRequest));
+    }
 }
